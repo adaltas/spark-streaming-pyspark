@@ -7,7 +7,7 @@ spark-submit \
 --executor-memory 5g --driver-memory 4g \
 --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.3.0 \
 --conf spark.sql.hive.thriftServer.singleSession=true \
-/vagrant/sstreaming-spark-app.py
+/vagrant/spark-streaming-memory.py
 
 * The application reads data from Kafka topic, parses Kafka messages, processes it, and mounts the results in memory
 * Embedeed Spark Thrift Server is launched to expose streaming results stored in memory

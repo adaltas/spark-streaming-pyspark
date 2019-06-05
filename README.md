@@ -18,51 +18,47 @@ sudo tee -a /etc/hosts > /dev/null <<- EOF
 EOF
 vagrant up
 ```
-
-* Sets up SSH keys for host machine
-* Appends cluster nodes' FQDNs in /etc/hosts of a host machine (sudo needed)
-* Configures the /etc/hosts file on host machine
-* Sets up a local cluster of 4 VMs running on a laptop with 32GB and 8 cores
+* Creates SSH keys on the host machine (`~/.ssh/id_rsa_ex`)
+* Appends FQDNs of cluster nodes in `/etc/hosts` on the host machine (sudo needed)
+* Sets up a cluster of 4 VMs running on a laptop with 32GB and 8 cores
+  * The VMs FQDNs: `master01.cluster`, `master02.cluster`, `worker01.cluster`, `worker02.cluster`
   * The VMs have respectively 5/6/7/7 GB RAM, 1/1/3/2 cores, and all are running CentOS
-  * The VMs are: `master01.cluster`, `master02.cluster`, `worker01.cluster`, `worker02.cluster`
-  * Sets up SSH keys for root of each node (each guest machine)
-  * Configures the /etc/hosts file on each node
+  * Sets up SSH keys for root of each node (each VM)
+  * Configures the `/etc/hosts` file on each node
   * [Prepares the environment for HDP](https://docs.hortonworks.com/HDPDocuments/Ambari-2.7.3.0/bk_ambari-installation/content/prepare_the_environment.html) on each node
   * Installs Python 3 concurrently to Python 2 on each node
-  * Installs mysql and sets up a `hive` database with `hive` user with `NewHivePass4!` password on node `master01.cluster`
-  * Installs Ambari server on node `master01.cluster`
-  * Installs mysql jdbc connector and configures it for Ambari server running on `master01.cluster` 
-  
-Notice that all nodes are provisioned via shell, which is a fragile procedural approach. Warnings may occur.
+* Only on the node `master01.cluster`:
+  * Installs mysql and sets up a mysql database called `hive`, creates a `hive` user with `NewHivePass4!` password
+  * Installs Ambari server and mysql jdbc connector
+  * Starts `ambari-server`
+* Notice that all nodes are provisioned via shell, which is a fragile procedural approach. Warnings may occur.
 
 ## Install HDP distribution with Ambari
 
-Once the VM cluster is ready, deploy a minimal Hadoop cluster with [HDP 3.1.0 installed through Apache Ambari 2.7.3](https://docs.hortonworks.com/HDPDocuments/Ambari-2.7.3.0/bk_ambari-installation/content/install-ambari-server.html). 
-
-You should be able to access Ambari's Web UI on http://master01.cluster:8080.
+Now the cluster should be ready for the Hadoop installation. You should be able to access Ambari's Web UI on http://master01.cluster:8080. Deploy a minimal Hadoop cluster with [HDP 3.1.0 installed through Apache Ambari 2.7.3](https://docs.hortonworks.com/HDPDocuments/Ambari-2.7.3.0/bk_ambari-installation/content/install-ambari-server.html). 
 
 Guidelines for the Ambari Installer wizard:
 
-* As Target Hosts, enter the list of hosts with `master[01-02].cluster` and `worker[01-02].cluster` lines
-* During the Host Registration Information provide the `~/.ssh/id_rsa_ex` SSH private key created earlier
+* In "Target Hosts", enter the list of hosts with `master[01-02].cluster` and `worker[01-02].cluster` lines
+* During the "Host Registration Information" provide the `~/.ssh/id_rsa_ex` SSH private key created earlier
 * Install a minimal set of services:
   * ZooKeeper, YARN, HDFS, Hive, Tez on host `master01.cluster`
   * Kafka and Spark2 (including Spark2 History Server and Spark Thrift Server) on host `master02.cluster`
-* Choose to connect to the existing `hive` database with a URL `jdbc:mysql://master01.cluster/hive` (usr/pass `hive`/`NewHivePass4!`)
+* Choose to connect to the existing mysql database with a URL `jdbc:mysql://master01.cluster/hive` (usr/pass `hive`/`NewHivePass4!`)
 * Configure YARN containers: the memory allocated for containers at 6144MB, with a container memory threshold from the minimum value of 512MB to the maximum value of 6144MB
 * Configure Spark2 to use Python 3 for PySpark - in "Spark2/Advanced spark2-env/content" field append `PYSPARK_PYTHON=python3`
 * Spark's Driver program output tends to be rich in `INFO` level logs, which obfuscates the processing results outputted to console. In "Spark2/Advanced spark2-log4j-properties" `INFO` can be changed to `WARN` in "log4j.rootCategory" to make Spark output less verbose. When things don't work it's better to reverse to `INFO` log level
-* Check that all services are running on hosts they were supposed to. Especially verify that Kafka Broker listens on master02.cluster:6667 and Spark2 is available on master02.cluster
+* Check that all services are running on hosts they were supposed to. Especially verify that Kafka Broker listens on `master02.cluster:6667` and Spark2 is available on `master02.cluster`
 
 ## New York state neighborhoods Shapefiles
 
 [Zillow](https://www.zillow.com/) shared New York state neighborhoods Shapefile under the Creative Commons license. The files seem to disappeared from their website, but they are available in this repository in the directory "NYC_neighborhoods".
 
-The Shapefiles include the outlines of New York City neighborhoods. They are used by the "NYC_neighborhoods/prep-nbhds.py" Python script that creates a *NYC_neighborhoods/nbhd.jsonl* file with neighborhoods data needed for the purpose of the part 1 and part 2 articles.
+The Shapefiles include the outlines of New York City neighborhoods. They are used by the "NYC_neighborhoods/prep-nbhds.py" Python script that creates a "NYC_neighborhoods/nbhd.jsonl" file with neighborhoods data needed for the purpose of the part 1 and part 2 articles.
 
 ## Launching the code
 
-The PySpark application *spark-streaming-X.py* (where X can be console, hdfs, or memory) can be submitted on a cluster from `master02.cluster` as `spark` user with a command:
+The PySpark application *spark-streaming-X.py* (where X can be *console*, *hdfs*, or *memory*) can be submitted on a cluster from `master02.cluster` as `spark` user with a command:
 
 ```
 spark-submit \
@@ -74,13 +70,13 @@ spark-submit \
 /vagrant/spark-streaming-X.py
 ```
 
-The submitted application will be stuck and waiting for resources unless you kill any other application running on the cluster (default Spark Thrift Server, other Spark application, Tez apps) because the parameters for `spark-submit` are picked with assumption that only one such Spark application runs at the time.
-
 Once the application started, launch the stream of data from `master02.cluster` as `root` or `kafka`:
 
 ```bash
 /vagrant/launch-streams.sh
 ```
+
+The submitted application can get stuck while waiting for the resources if other application is already running on the cluster. Parameters for `spark-submit` are picked with assumption that only one such Spark application runs at the time. You may need to kill Spark Thrift Server, Tez application, or Spark application that you launched before.
 
 The expected output of the application depends on which application has been submitted:
 
