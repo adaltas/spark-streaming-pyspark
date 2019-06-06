@@ -58,7 +58,7 @@ The Shapefiles include the outlines of New York City neighborhoods. They are use
 
 ## Launching the code
 
-The PySpark application *spark-streaming-X.py* (where X can be *console*, *hdfs*, or *memory*) can be submitted on a cluster from `master02.cluster` as `spark` user with a command:
+The PySpark application *spark-streaming-X.py* (where X can be *console*, *hdfs*, *memory*, or *hdfs-memory*) can be submitted on a cluster from `master02.cluster` as `spark` user with a command:
 
 ```
 spark-submit \
@@ -100,3 +100,12 @@ The expected output of the application depends on which application has been sub
 * The application reads data from Kafka topic, parses Kafka messages, processes it, and mounts the results in memory
 * Embedeed Spark Thrift Server is launched to expose streaming results stored in memory
 * `TipsInMemory` query writes the streaming results in-memory of the Spark Driver
+
+### spark-streaming-hdfs-memory.py
+
+* The application reads data from Kafka topic, parses Kafka messages, dumps unaltered raw data to HDFS, processes data, and mounts the results in memory
+* Embedeed Spark Thrift Server is launched to expose streaming results stored in memory
+* Three streaming queries
+    * `PersistRawTaxiRides` query persists raw taxi rides data on hdfs path /user/spark/datalake/RidesRaw
+    * `PersistRawTaxiFares` query persists raw taxi fares data on hdfs path /user/spark/datalake/FaresRaw
+    * `TipsInMemory` query writes the streaming results in-memory of the Spark Driver
